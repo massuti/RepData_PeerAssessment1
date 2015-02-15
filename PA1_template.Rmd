@@ -1,25 +1,133 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+author: "massuti"
+date: "Sunday, February 15, 2015"
 output: 
   html_document:
     keep_md: true
----
+---  
+
+## Loading and preprocessing the data  
+
+```{r, echo=TRUE}
+activity <- read.csv("activity.csv")
+```  
+
+## What is mean total number of steps taken per day?  
+
+```{r, echo=TRUE}
+stepbydate <- aggregate(steps ~ date, 
+                        data=activity, sum, 
+                        na.rm = TRUE)
+
+print(stepbydate)
+
+hist(stepbydate$steps, 
+     main = "Steps by date", 
+     breaks = 20)
+
+mean(stepbydate$steps)
+
+median(stepbydate$steps)
+```  
+
+## What is the average daily activity pattern?  
+
+```{r, echo=TRUE}
+stepsbyinterval <- aggregate(steps ~ interval, 
+                             data=activity, mean, 
+                             na.rm = TRUE)
+
+plot(stepsbyinterval$interval, 
+     stepsbyinterval$steps, 
+     main = "Time Series of mean steps by intervals", 
+     type = "l")
+```  
 
 
-## Loading and preprocessing the data
+Interval with maximum number of steps:
+```{r, echo=TRUE}
+stepsbyinterval[which.max(stepsbyinterval$steps), ]
+```  
+
+## Imputing missing values  
 
 
-
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
+Total number of NA values:
+```{r, echo=TRUE}
+sum(is.na(activity))
+```  
 
 
+Filling NA values with mean steps in each 5 minute time interval and creating a new data set:
+```{r, echo=TRUE}
+activityNA <- data.frame(activity$steps)
 
-## Imputing missing values
+activityNA[is.na(activityNA), ] <- floor(
+        tapply(X=activity$steps, 
+        INDEX=activity$interval,
+        FUN=mean, na.rm = TRUE))
 
+newactivity <- cbind(activityNA, activity[, 2:3])
+colnames(newactivity) <- c("steps", "date", "interval")
+```    
+  
+Making histogram of new data set steps by interval, to see changes:
+```{r, echo=TRUE}
+newstepbydate <- aggregate(steps ~ date, 
+                        data=newactivity, sum)
 
+print(newstepbydate)
 
-## Are there differences in activity patterns between weekdays and weekends?
+hist(newstepbydate$steps,
+     main = "Steps by date after filling NA",
+     breaks = 20)
+
+mean(newstepbydate$steps)
+
+median(newstepbydate$steps)
+```  
+
+The NA values where substituted for mean values, bringing the mean values in the histogram to go up, as seen in the comparation of both,
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+
+hist(newstepbydate$steps, 
+     main = "ORIGINAL - Steps by date", 
+     breaks = 20, ylim=c(0,18))
+
+hist(stepbydate$steps, 
+     main = "NEW - Steps by date", 
+     breaks = 20, ylim=c(0,18))
+```  
+
+## Are there differences in activity patterns between weekdays and weekends?  
+
+Creating a new variable:
+```{r, echo=TRUE}
+newactivity$day <- weekdays(as.Date(newactivity$date))
+
+for (i in 1:nrow(newactivity)) {                                        
+        if (newactivity[i,]$day %in% c("Saturday",
+                                       "Sunday")) {
+                newactivity[i,]$day <- "weekend"
+                } else { newactivity[i,]$day <- "weekday"}
+}
+
+activitybyday <- aggregate(data=newactivity,
+                           steps ~ day + interval,
+                           FUN=mean)
+```   
+
+Ploting diference:
+```{r, echo=TRUE}
+library("lattice")
+
+xyplot(type="l",
+       data=activitybyday,
+       steps ~ interval | day,
+       layout=c(1,2))
+```  
+  
+END.
+
